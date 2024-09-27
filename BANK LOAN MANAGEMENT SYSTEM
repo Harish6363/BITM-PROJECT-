@@ -1,0 +1,128 @@
+from datetime import datetime, timedelta
+
+class Loan:
+    def __init__(self, loan_id, name, amount, rate, years, frequency):
+        self.loan_id = loan_id
+        self.name = name
+        self.amount = amount
+        self.rate = rate
+        self.years = years
+        self.frequency = frequency
+        self.start_date = datetime.now()
+        self.payments = []
+        self.total_paid = 0.0
+        self.schedule = self._generate_schedule()
+
+    def _generate_schedule(self):
+        schedule = []
+        date = self.start_date
+        for _ in range(self.years * 12 // self.frequency):
+            date += timedelta(days=30 * self.frequency)
+            schedule.append(date)
+        return schedule
+
+    def calc_interest(self, type='simple'):
+        if type == 'simple':
+            return self.amount + (self.amount * self.rate * self.years / 100)
+        return self.amount * (1 + self.rate / 100) ** self.years
+
+    def pay(self, amount):
+        self.total_paid += amount
+        self.payments.append((datetime.now(), amount))
+
+    def balance(self, type='simple'):
+        return self.calc_interest(type) - self.total_paid
+
+    def details(self, verbose=True):
+        print(f"\nLoan {self.loan_id} - {self.name}")
+        print(f"Amount: {self.amount}, Rate: {self.rate}%, Paid: {self.total_paid}, Balance: {self.balance():.2f}")
+        if verbose:
+            print("Payment Schedule:", self.schedule[:3], "...")  # Show first 3 dates for brevity
+            print("Payments:", self.payments[:3], "...")  # Show first 3 payments for brevity
+        else:
+            print("Payment Schedule: ...")
+            print("Payments: ...")
+
+
+class LoanSystem:
+    def __init__(self):
+        self.loans = []
+        self.next_id = 1
+
+    def add_loan(self, name, amount, rate, years, frequency):
+        loan = Loan(self.next_id, name, amount, rate, years, frequency)
+        self.loans.append(loan)
+        self.next_id += 1
+
+    def find_loan(self, loan_id):
+        return next((loan for loan in self.loans if loan.loan_id == loan_id), None)
+
+    def update_loan(self, loan_id, amount=None, rate=None):
+        loan = self.find_loan(loan_id)
+        if loan:
+            if amount: loan.amount = amount
+            if rate: loan.rate = rate
+
+    def delete_loan(self, loan_id):
+        loan = self.find_loan(loan_id)
+        if loan: self.loans.remove(loan)
+
+    def make_payment(self, loan_id, amount):
+        loan = self.find_loan(loan_id)
+        if loan: loan.pay(amount)
+
+    def show_loans(self):
+        for loan in self.loans:
+            loan.details()
+
+    def loans_due_by_date(self, date):
+        due_loans = []
+        for loan in self.loans:
+            if any(payment_date <= date for payment_date in loan.schedule):
+                due_loans.append(loan)
+        return due_loans
+
+    def run(self):
+        while True:
+            print("\nBank Loan Management System")
+            print("1. Add Loan")
+            print("2. Make Payment")
+            print("3. View Loans")
+            print("4. Check Loans Due by Date")
+            print("5. Exit")
+            choice = input("Enter your choice: ")
+
+            if choice == '1':
+                name = input("Enter borrower name: ")
+                amount = float(input("Enter loan amount: "))
+                rate = float(input("Enter interest rate: "))
+                years = int(input("Enter loan duration in years: "))
+                frequency = int(input("Enter payment frequency (months): "))
+                self.add_loan(name, amount, rate, years, frequency)
+
+            elif choice == '2':
+                loan_id = int(input("Enter loan ID: "))
+                amount = float(input("Enter payment amount: "))
+                self.make_payment(loan_id, amount)
+
+            elif choice == '3':
+                self.show_loans()
+
+            elif choice == '4':
+                date_input = input("Enter date (YYYY-MM-DD): ")
+                date = datetime.strptime(date_input, "%Y-%m-%d")
+                due_loans = self.loans_due_by_date(date)
+                for loan in due_loans:
+                    loan.details(verbose=False)
+
+            elif choice == '5':
+                print("Exiting...")
+                break
+
+            else:
+                print("Invalid choice. Please try again.")
+
+# Example Usage
+if __name__ == "__main__":
+    system = LoanSystem()
+    system.run()
